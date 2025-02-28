@@ -1,0 +1,298 @@
+### 🔥 Multi-Threading and Exception Handling in Spring Boot – Explained
+---
+
+### 1. **What is Multi-Threading?**
+Multi-threading means executing **multiple tasks (threads)** at the same time to improve performance.
+
+Example:
+- Downloading a file
+- Sending emails
+- Processing user requests
+All at the same time without waiting.
+
+---
+
+### 2. **How Does Your Spring Boot Application Handle Multi-Threading?**
+Spring Boot handles multi-threading using:
+- **Thread Pools** (Default in Tomcat)
+- **@Async Annotation** for async methods
+- **ExecutorService** for custom thread management
+- **Spring Task Executors** (`ThreadPoolTaskExecutor`)
+
+---
+
+### 3. **Does Your Spring Boot API Respond Parallelly or Sequentially?**
+By default, Spring Boot APIs respond **parallelly** because:
+- It uses Tomcat embedded server.
+- Tomcat assigns each request to a separate thread from its **thread pool**.
+
+---
+
+### 4. **How Did You Ensure Your API Responds Parallelly?**
+To ensure parallel execution:
+1. Configure Thread Pool using **application.properties**:
+```properties
+server.tomcat.max-threads=200
+server.tomcat.min-spare-threads=10
+```
+2. Use **@Async** for async methods.
+3. Use **ThreadPoolTaskExecutor** for custom thread pools.
+
+---
+
+### 5. **@Async Annotation in Spring Boot**
+The `@Async` annotation makes methods execute in a **different thread** without blocking the main thread.
+
+#### Example:
+```java
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyService {
+
+    @Async
+    public void processTask() {
+        System.out.println("Thread Name: " + Thread.currentThread().getName());
+    }
+}
+```
+---
+
+### 6. **How to Enable Async in Spring Boot?**
+Add this annotation in your main class:
+```java
+@SpringBootApplication
+@EnableAsync
+public class MyApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(MyApplication.class, args);
+    }
+}
+```
+
+---
+
+### 7. **How Do You Handle Exceptions in Spring Boot?**
+Spring Boot provides several ways to handle exceptions:
+- **@ExceptionHandler** (Method Level)
+- **@ControllerAdvice** (Global Exception Handling)
+- **ResponseStatusException**
+- **Custom Exception Classes**
+
+---
+
+### 8. **Which Annotation Did You Use for Exception Handling?**
+I used:
+- `@ExceptionHandler` for method-level exception handling.
+- `@ControllerAdvice` for global exception handling.
+
+#### Example:
+```java
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api")
+public class MyController {
+
+    @GetMapping("/exception")
+    public String exceptionExample() {
+        throw new RuntimeException("Something went wrong!");
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public String handleRuntimeException(RuntimeException ex) {
+        return "Handled Exception: " + ex.getMessage();
+    }
+}
+```
+---
+
+### ✅ Summary
+| Concept                  | Annotation             | Purpose                 |
+|---------------------------|-----------------------|-----------------------|
+| Multi-Threading           | @Async               | Execute method asynchronously |
+| Global Exception Handling | @ControllerAdvice     | Handle exceptions globally |
+| Method Exception Handling | @ExceptionHandler     | Handle specific exceptions |
+| Parallel Execution        | Thread Pools         | Process multiple requests simultaneously |
+
+---
+
+
+
+### 📌 Spring Boot Project with Multi-Threading and Exception Handling
+
+---
+
+### Project Structure
+```
+SpringBootMultiThreading
+│
+├─ src
+│  └─ main
+│      ├─ java
+│      │  └─ com.example.demo
+│      │      ├─ DemoApplication.java        # Main Class
+│      │      ├─ controller
+│      │      │   └─ MyController.java       # API Controller
+│      │      ├─ service
+│      │      │   └─ MyService.java          # Business Logic with @Async
+│      │      └─ exception
+│      │          └─ GlobalExceptionHandler.java  # Exception Handling
+│      └─ resources
+│          └─ application.properties         # Thread Pool Configurations
+└─ pom.xml
+```
+
+---
+
+### 1. **Dependency (pom.xml)**
+Add the following dependencies:
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+</dependencies>
+```
+
+---
+
+### 2. **Enable Async Configuration**
+In your **main class**:
+```java
+package com.example.demo;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
+
+@SpringBootApplication
+@EnableAsync
+public class DemoApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(DemoApplication.class, args);
+    }
+}
+```
+
+---
+
+### 3. **Service Layer with @Async**
+```java
+package com.example.demo.service;
+
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyService {
+
+    @Async
+    public void processTask() throws InterruptedException {
+        System.out.println("Thread Name: " + Thread.currentThread().getName());
+        Thread.sleep(5000); // Simulate long-running task
+        System.out.println("Task Completed by: " + Thread.currentThread().getName());
+    }
+}
+```
+
+---
+
+### 4. **Controller Layer**
+```java
+package com.example.demo.controller;
+
+import com.example.demo.service.MyService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api")
+public class MyController {
+
+    @Autowired
+    private MyService myService;
+
+    @GetMapping("/start")
+    public String startProcess() throws InterruptedException {
+        myService.processTask();
+        return "Task Started! Check Console.";
+    }
+
+    @GetMapping("/exception")
+    public String exceptionExample() {
+        throw new RuntimeException("Something went wrong!");
+    }
+}
+```
+
+---
+
+### 5. **Global Exception Handler**
+```java
+package com.example.demo.exception;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+
+@ControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<String> handleRuntimeException(RuntimeException ex) {
+        return ResponseEntity.badRequest().body("Handled Exception: " + ex.getMessage());
+    }
+}
+```
+
+---
+
+### 6. **Thread Pool Configuration**
+In **application.properties**:
+```properties
+server.port=8080
+spring.task.execution.pool.core-size=5
+spring.task.execution.pool.max-size=10
+spring.task.execution.pool.queue-capacity=50
+```
+
+---
+
+### 7. **Testing APIs**
+Start the application and test the following endpoints:
+
+| API                | Description                   | Expected Behavior             |
+|------------------|------------------------------|-----------------------------|
+| `/api/start`      | Starts async task          | Console will show thread execution |
+| `/api/exception`   | Simulates exception        | Returns custom error message |
+
+---
+
+### Console Output (Parallel Execution)
+```
+Thread Name: task-1
+Task Completed by: task-1
+```
+---
+
+### 🎯 What Did You Learn?
+| Feature                | Explanation                    |
+|-----------------------|--------------------------------|
+| @EnableAsync          | Enables multi-threading       |
+| @Async                | Executes methods asynchronously |
+| @ControllerAdvice      | Global exception handling     |
+| @ExceptionHandler      | Specific exception handling    |
+| Thread Pool Config     | Controls parallel execution   |
+
+---
+
+### ✅ Download Project
+👉 [Download Source Code from GitHub](https://github.com/YourGithubUsername/SpringBootMultiThreading) (Demo link placeholder)
+
+---
